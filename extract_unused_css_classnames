@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extract Unused CSS Classes</title>
+    <style>
+        textarea {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+        }
+        .result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Extract Unused CSS Classes</h1>
+
+    <textarea id="rawHtmlInput" placeholder="Paste your full HTML here"></textarea>
+    <br>
+    <button onclick="extractUnusedCSSClasses()">Extract Unused CSS Classes</button>
+
+    <pre id="result" class="result"></pre>
+
+    <script>
+        function extractUnusedCSSClasses() {
+            const rawHTML = document.getElementById('rawHtmlInput').value;
+
+            // Parse the HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(rawHTML, 'text/html');
+
+            if (doc.querySelector('parsererror')) {
+                document.getElementById('result').textContent = "Invalid HTML. Please check your input.";
+                return;
+            }
+
+            // Step 1: Extract CSS classes from <style> tags
+            const cssClasses = new Set();
+            doc.querySelectorAll('style').forEach(styleTag => {
+                let cssText = styleTag.textContent;
+
+                // Remove comments and normalize whitespace
+                cssText = cssText.replace(/\/\*[^*]*\*+([^/*][^*]*\*+)*\//g, ''); // Remove comments
+                cssText = cssText.replace(/\s+/g, ' '); // Normalize whitespace
+
+                // Match all `.class-name` patterns
+                const matches = cssText.match(/\.(\w[\w-]*)\b(?=\s*\{)/g); // Matches `.class-name {`
+                if (matches) {
+                    matches.forEach(match => {
+                        const className = match.replace(/^\./, ''); // Remove leading `.`
+                        cssClasses.add(className);
+                    });
+                }
+            });
+
+            // Step 2: Extract all used classes in the <body>
+            const usedClasses = new Set();
+            doc.querySelectorAll('*[class]').forEach(el => {
+                el.className.split(/\s+/).forEach(cls => {
+                    if (cls.trim()) usedClasses.add(cls);
+                });
+            });
+
+            // Debugging Logs
+            console.log("CSS Classes Defined in <style>:", Array.from(cssClasses));
+            console.log("Classes Used in <body>:", Array.from(usedClasses));
+
+            // Step 3: Identify unused classes
+            const unusedClasses = [...cssClasses].filter(cls => !usedClasses.has(cls));
+
+            // Output
+            if (unusedClasses.length > 0) {
+                document.getElementById('result').textContent = `Unused CSS Classes:\n\n${unusedClasses.join('\n')}`;
+            } else {
+                document.getElementById('result').textContent = "No unused CSS classes found.";
+            }
+
+            // Debugging Logs for Unused Classes
+            console.log("Unused CSS Classes:", unusedClasses);
+        }
+    </script>
+</body>
+</html>
